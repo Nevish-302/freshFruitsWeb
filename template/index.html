@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FMCG Detection Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            margin-top: 20px;
+        }
+
+        .video-container {
+            margin: 20px auto;
+            max-width: 80%;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        video, img {
+            width: 100%;
+            height: auto;
+        }
+
+        .object-summary {
+            margin: 20px auto;
+            max-width: 80%;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+        }
+
+        .object-summary h2 {
+            margin: 0 0 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f9f9f9;
+        }
+
+        .source-yolo {
+            color: #2ecc71;  /* Green for YOLO */
+        }
+
+        .source-detectron {
+            color: #3498db;  /* Blue for Detectron2 */
+        }
+
+        .source-keras {
+            color: #e74c3c;  /* Red for Keras */
+        }
+
+        /* Add optimization for image rendering */
+        .video-container img {
+            width: 100%;
+            height: auto;
+            image-rendering: optimizeSpeed;             /* Older versions of FF */
+            image-rendering: -moz-crisp-edges;          /* FF 6.0+ */
+            image-rendering: -webkit-optimize-contrast; /* Safari */
+            image-rendering: -o-crisp-edges;           /* OS X & Windows Opera */
+            image-rendering: pixelated;                /* Awesome future-browsers */
+            -ms-interpolation-mode: nearest-neighbor;  /* IE */
+        }
+
+        /* Add loading state styles */
+        .loading {
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <h1>FMCG Detection System</h1>
+
+    <!-- Live Video Feed -->
+    <div class="video-container">
+        <img src="/video_feed" alt="Live Video Stream">
+    </div>
+
+    <!-- Object Detection Summary -->
+    <div class="object-summary">
+        <h2>Detected Object Counts</h2>
+        <table id="object-summary-table">
+            <thead>
+                <tr>
+                    <th>Object</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody id="object-summary-body">
+                <!-- Rows will be populated dynamically -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let updateTimer = null;
+        const summaryUpdateInterval = 2000; // 2 seconds
+        let isUpdating = false;
+
+        // Optimized fetch function with debouncing
+        async function fetchObjectSummary() {
+            if (isUpdating) return;
+            isUpdating = true;
+
+            try {
+                const response = await fetch('/object_summary');
+                if (!response.ok) throw new Error('Network response was not ok');
+
+                const data = await response.json();
+                updateTable(data);
+            } catch (error) {
+                console.error('Error fetching object summary:', error);
+            } finally {
+                isUpdating = false;
+            }
+        }
+
+        // Separated table update logic for better performance
+        function updateTable(data) {
+            const tableBody = document.getElementById('object-summary-body');
+            const fragment = document.createDocumentFragment();
+
+            for (const [object, count] of Object.entries(data)) {
+                const row = document.createElement('tr');
+                const objectCell = document.createElement('td');
+                const countCell = document.createElement('td');
+
+                // Optimize source checking
+                const source = object.includes('(YOLO)') ? 'source-yolo' :
+                             object.includes('(Detectron2)') ? 'source-detectron' :
+                             object.includes('(Keras)') ? 'source-keras' : '';
+
+                if (source) objectCell.className = source;
+
+                objectCell.textContent = object;
+                countCell.textContent = count;
+
+                row.appendChild(objectCell);
+                row.appendChild(countCell);
+                fragment.appendChild(row);
+            }
+
+            // Batch DOM updates
+            requestAnimationFrame(() => {
+                tableBody.innerHTML = '';
+                tableBody.appendChild(fragment);
+            });
+        }
+
+        // Handle visibility changes to pause updates when tab is inactive
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                clearInterval(updateTimer);
+            } else {
+                updateTimer = setInterval(fetchObjectSummary, summaryUpdateInterval);
+            }
+        });
+
+        // Initialize updates
+        updateTimer = setInterval(fetchObjectSummary, summaryUpdateInterval);
+
+        // Optimize image loading
+        const videoFeed = document.querySelector('.video-container img');
+        videoFeed.addEventListener('load', () => {
+            videoFeed.classList.remove('loading');
+        });
+        videoFeed.addEventListener('loadstart', () => {
+            videoFeed.classList.add('loading');
+        });
+    </script>
+</body>
+</html>
