@@ -25,7 +25,6 @@ cymem==2.0.10
 Cython==3.0.11
 dateparser==1.2.0
 decorator==5.1.1
-detectron2 @ git+https://github.com/facebookresearch/detectron2.git@c69939aa85460e8135f40bce908a6cddaa73065f
 easyocr==1.7.2
 eval_type_backport==0.2.0
 filelock==3.16.1
